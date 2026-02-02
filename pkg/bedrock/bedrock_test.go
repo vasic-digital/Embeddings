@@ -1,0 +1,265 @@
+package bedrock
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestNewClient(t *testing.T) {
+	tests := []struct {
+		name              string
+		config            Config
+		expectedDimension int
+	}{
+		{"default", Config{AccessKey: "a", SecretKey: "s"}, 1024},
+		{"titan_v1", Config{AccessKey: "a", SecretKey: "s", Model: "amazon.titan-embed-text-v1"}, 1536},
+		{"titan_v2", Config{AccessKey: "a", SecretKey: "s", Model: "amazon.titan-embed-text-v2:0"}, 1024},
+		{"titan_image", Config{AccessKey: "a", SecretKey: "s", Model: "amazon.titan-embed-image-v1"}, 1024},
+		{"cohere_english", Config{AccessKey: "a", SecretKey: "s", Model: "cohere.embed-english-v3"}, 1024},
+		{"cohere_multilingual", Config{AccessKey: "a", SecretKey: "s", Model: "cohere.embed-multilingual-v3"}, 1024},
+		{"unknown", Config{AccessKey: "a", SecretKey: "s", Model: "unknown"}, 1536},
+		{"default_region", Config{AccessKey: "a", SecretKey: "s"}, 1024},
+		{"custom_region", Config{AccessKey: "a", SecretKey: "s", Region: "eu-west-1"}, 1024},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := NewClient(tt.config)
+			assert.NotNil(t, client)
+			assert.Equal(t, tt.expectedDimension, client.Dimensions())
+		})
+	}
+}
+
+func TestClient_Name(t *testing.T) {
+	client := NewClient(Config{AccessKey: "a", SecretKey: "s"})
+	assert.Equal(t, "bedrock/amazon.titan-embed-text-v2:0", client.Name())
+}
+
+func TestClient_Embed_Titan(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Contains(t, r.URL.Path, "invoke")
+
+		response := titanResponse{
+			Embedding:      make([]float32, 1024),
+			InputTextToken: 5,
+		}
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	client := NewClient(Config{
+		Region:    "us-east-1",
+		AccessKey: "test-key",
+		SecretKey: "test-secret",
+		Model:     "amazon.titan-embed-text-v2:0",
+		BaseURL:   server.URL,
+		Timeout:   5 * time.Second,
+	})
+
+	embedding, err := client.Embed(context.Background(), "test text")
+	assert.NoError(t, err)
+	assert.Len(t, embedding, 1024)
+}
+
+func TestClient_Embed_Cohere(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := cohereResponse{
+			Embeddings: [][]float32{make([]float32, 1024)},
+		}
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	client := NewClient(Config{
+		Region:    "us-east-1",
+		AccessKey: "test-key",
+		SecretKey: "test-secret",
+		Model:     "cohere.embed-english-v3",
+		BaseURL:   server.URL,
+		Timeout:   5 * time.Second,
+	})
+
+	embedding, err := client.Embed(context.Background(), "test text")
+	assert.NoError(t, err)
+	assert.Len(t, embedding, 1024)
+}
+
+func TestClient_EmbedBatch_Titan(t *testing.T) {
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		response := titanResponse{
+			Embedding:      make([]float32, 1024),
+			InputTextToken: 5,
+		}
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	client := NewClient(Config{
+		Region:    "us-east-1",
+		AccessKey: "key",
+		SecretKey: "secret",
+		Model:     "amazon.titan-embed-text-v2:0",
+		BaseURL:   server.URL,
+		Timeout:   5 * time.Second,
+	})
+
+	embeddings, err := client.EmbedBatch(context.Background(), []string{"a", "b"})
+	assert.NoError(t, err)
+	assert.Len(t, embeddings, 2)
+	assert.Equal(t, 2, callCount)
+}
+
+func TestClient_EmbedBatch_Cohere(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := cohereResponse{
+			Embeddings: [][]float32{
+				make([]float32, 1024),
+				make([]float32, 1024),
+			},
+		}
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	client := NewClient(Config{
+		Region:    "us-east-1",
+		AccessKey: "key",
+		SecretKey: "secret",
+		Model:     "cohere.embed-english-v3",
+		BaseURL:   server.URL,
+		Timeout:   5 * time.Second,
+	})
+
+	embeddings, err := client.EmbedBatch(context.Background(), []string{"a", "b"})
+	assert.NoError(t, err)
+	assert.Len(t, embeddings, 2)
+}
+
+func TestClient_Embed_UnsupportedModel(t *testing.T) {
+	client := NewClient(Config{
+		AccessKey: "key",
+		SecretKey: "secret",
+		Model:     "unsupported-model",
+		Timeout:   5 * time.Second,
+	})
+
+	_, err := client.Embed(context.Background(), "test")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported model")
+}
+
+func TestClient_Embed_APIError(t *testing.T) {
+	tests := []struct {
+		name       string
+		statusCode int
+		errContain string
+	}{
+		{"forbidden", http.StatusForbidden, "403"},
+		{"server_error", http.StatusInternalServerError, "500"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tt.statusCode)
+				_, _ = w.Write([]byte(`{"message": "error"}`))
+			}))
+			defer server.Close()
+
+			client := NewClient(Config{
+				AccessKey: "key",
+				SecretKey: "secret",
+				Model:     "amazon.titan-embed-text-v2:0",
+				BaseURL:   server.URL,
+				Timeout:   5 * time.Second,
+			})
+
+			_, err := client.Embed(context.Background(), "test")
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), tt.errContain)
+		})
+	}
+}
+
+func TestClient_ContextCancellation(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(5 * time.Second)
+	}))
+	defer server.Close()
+
+	client := NewClient(Config{
+		AccessKey: "key",
+		SecretKey: "secret",
+		BaseURL:   server.URL,
+		Timeout:   100 * time.Millisecond,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	_, err := client.Embed(ctx, "test")
+	assert.Error(t, err)
+}
+
+func TestSHA256Hash(t *testing.T) {
+	hash := sha256Hash([]byte("test"))
+	assert.Len(t, hash, 64)
+	assert.NotEmpty(t, hash)
+}
+
+func TestHmacSHA256(t *testing.T) {
+	result := hmacSHA256([]byte("key"), "data")
+	assert.NotEmpty(t, result)
+	assert.Len(t, result, 32)
+}
+
+func TestClient_SignRequest(t *testing.T) {
+	client := NewClient(Config{
+		Region:    "us-east-1",
+		AccessKey: "AKID",
+		SecretKey: "secret",
+		Timeout:   5 * time.Second,
+	})
+
+	req, _ := http.NewRequest(http.MethodPost, "https://example.com/test", nil)
+	req.Header.Set("Content-Type", "application/json")
+
+	client.signRequest(req, []byte("test body"))
+
+	assert.NotEmpty(t, req.Header.Get("Authorization"))
+	assert.NotEmpty(t, req.Header.Get("X-Amz-Date"))
+	assert.Contains(t, req.Header.Get("Authorization"), "AWS4-HMAC-SHA256")
+	assert.Contains(t, req.Header.Get("Authorization"), "AKID")
+}
+
+func TestClient_Embed_Cohere_NoEmbedding(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := cohereResponse{
+			Embeddings: [][]float32{},
+		}
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	client := NewClient(Config{
+		AccessKey: "key",
+		SecretKey: "secret",
+		Model:     "cohere.embed-english-v3",
+		BaseURL:   server.URL,
+		Timeout:   5 * time.Second,
+	})
+
+	_, err := client.Embed(context.Background(), "test")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no embedding")
+}
