@@ -3,6 +3,7 @@ package cohere
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -241,4 +242,109 @@ func TestClient_CustomInputType(t *testing.T) {
 
 	_, err := client.Embed(context.Background(), "query text")
 	assert.NoError(t, err)
+}
+
+func TestClient_EmbedBatch_InvalidURL(t *testing.T) {
+	// Control characters in URL cause http.NewRequestWithContext to fail
+	client := NewClient(Config{
+		APIKey:  "test-key",
+		BaseURL: "http://example.com\x00invalid",
+		Timeout: 5 * time.Second,
+	})
+
+	_, err := client.EmbedBatch(context.Background(), []string{"test"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to create request")
+}
+
+func TestClient_EmbedBatch_RequestFailure(t *testing.T) {
+	client := NewClient(Config{
+		APIKey:  "test-key",
+		BaseURL: "http://invalid-host-that-does-not-exist.local:99999",
+		Timeout: 100 * time.Millisecond,
+	})
+
+	_, err := client.EmbedBatch(context.Background(), []string{"test"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "request failed")
+}
+
+func TestClient_EmbedBatch_JSONDecodeError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{invalid json`))
+	}))
+	defer server.Close()
+
+	client := NewClient(Config{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Timeout: 5 * time.Second,
+	})
+
+	_, err := client.EmbedBatch(context.Background(), []string{"test"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to parse response")
+}
+
+func TestClient_Embed_ReturnError(t *testing.T) {
+	// Test that Embed properly propagates errors from EmbedBatch
+	client := NewClient(Config{
+		APIKey:  "test-key",
+		BaseURL: "http://invalid-host-that-does-not-exist.local:99999",
+		Timeout: 100 * time.Millisecond,
+	})
+
+	_, err := client.Embed(context.Background(), "test")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "request failed")
+}
+
+// =========================================================================
+// Additional Tests for 100% Coverage
+// =========================================================================
+
+func TestClient_Embed_EmptyEmbeddingsReturned(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := embedResponse{
+			ID:         "test-id",
+			Embeddings: [][]float32{},
+		}
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	client := NewClient(Config{
+		APIKey:  "test-key",
+		BaseURL: server.URL,
+		Timeout: 5 * time.Second,
+	})
+
+	_, err := client.Embed(context.Background(), "test")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no embedding")
+}
+
+// mockMarshaler is a test marshaler that can be configured to return errors.
+type mockMarshaler struct {
+	err error
+}
+
+func (m mockMarshaler) Marshal(v interface{}) ([]byte, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	return json.Marshal(v)
+}
+
+func TestClient_EmbedBatch_MarshalError(t *testing.T) {
+	client := NewClient(Config{
+		APIKey:  "test-key",
+		Timeout: 5 * time.Second,
+	})
+	client.marshaler = mockMarshaler{err: fmt.Errorf("mock marshal error")}
+
+	_, err := client.EmbedBatch(context.Background(), []string{"test"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to marshal request")
 }

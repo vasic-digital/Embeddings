@@ -45,11 +45,24 @@ type Config struct {
 	Timeout time.Duration `json:"timeout"`
 }
 
+// jsonMarshaler abstracts JSON marshaling for dependency injection in tests.
+type jsonMarshaler interface {
+	Marshal(v interface{}) ([]byte, error)
+}
+
+// defaultMarshaler is the production JSON marshaler.
+type defaultMarshaler struct{}
+
+func (defaultMarshaler) Marshal(v interface{}) ([]byte, error) {
+	return json.Marshal(v)
+}
+
 // Client implements provider.EmbeddingProvider for AWS Bedrock.
 type Client struct {
 	config     Config
 	httpClient *http.Client
 	dimension  int
+	marshaler  jsonMarshaler
 }
 
 // titanRequest represents an AWS Titan embedding request.
@@ -98,6 +111,7 @@ func NewClient(config Config) *Client {
 		httpClient: &http.Client{
 			Timeout: config.Timeout,
 		},
+		marshaler: defaultMarshaler{},
 	}
 }
 
@@ -151,7 +165,7 @@ func (c *Client) EmbedBatch(ctx context.Context, texts []string) ([][]float32, e
 func (c *Client) embedTitan(ctx context.Context, text string) ([]float32, error) {
 	reqBody := titanRequest{InputText: text}
 
-	body, err := json.Marshal(reqBody)
+	body, err := c.marshaler.Marshal(reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("bedrock: failed to marshal request: %w", err)
 	}
@@ -192,7 +206,7 @@ func (c *Client) embedCohere(ctx context.Context, texts []string) ([][]float32, 
 		InputType: "search_document",
 	}
 
-	body, err := json.Marshal(reqBody)
+	body, err := c.marshaler.Marshal(reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("bedrock: failed to marshal request: %w", err)
 	}

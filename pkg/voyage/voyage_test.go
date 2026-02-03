@@ -3,6 +3,7 @@ package voyage
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -208,4 +209,116 @@ func TestClient_EmbedBatch_IndexOrdering(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, []float32{1.0}, embeddings[0])
 	assert.Equal(t, []float32{2.0}, embeddings[1])
+}
+
+func TestClient_EmbedBatch_InvalidURL(t *testing.T) {
+	// Control characters in URL cause http.NewRequestWithContext to fail
+	client := NewClient(Config{
+		APIKey:  "key",
+		BaseURL: "http://example.com\x00invalid",
+		Timeout: 5 * time.Second,
+	})
+
+	_, err := client.EmbedBatch(context.Background(), []string{"test"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to create request")
+}
+
+func TestClient_EmbedBatch_RequestFailure(t *testing.T) {
+	client := NewClient(Config{
+		APIKey:  "key",
+		BaseURL: "http://invalid-host-that-does-not-exist.local:99999",
+		Timeout: 100 * time.Millisecond,
+	})
+
+	_, err := client.EmbedBatch(context.Background(), []string{"test"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "request failed")
+}
+
+func TestClient_EmbedBatch_JSONDecodeError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{invalid json`))
+	}))
+	defer server.Close()
+
+	client := NewClient(Config{
+		APIKey:  "key",
+		BaseURL: server.URL,
+		Timeout: 5 * time.Second,
+	})
+
+	_, err := client.EmbedBatch(context.Background(), []string{"test"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to parse response")
+}
+
+func TestClient_CustomInputType(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req embedRequest
+		_ = json.NewDecoder(r.Body).Decode(&req)
+		assert.Equal(t, "query", req.InputType)
+
+		response := embedResponse{
+			Data: []struct {
+				Object    string    `json:"object"`
+				Embedding []float32 `json:"embedding"`
+				Index     int       `json:"index"`
+			}{
+				{Embedding: make([]float32, 1024), Index: 0},
+			},
+		}
+		_ = json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	client := NewClient(Config{
+		APIKey:    "key",
+		BaseURL:   server.URL,
+		InputType: "query",
+		Timeout:   5 * time.Second,
+	})
+
+	_, err := client.Embed(context.Background(), "query text")
+	assert.NoError(t, err)
+}
+
+// =========================================================================
+// Additional Tests for 100% Coverage
+// =========================================================================
+
+func TestClient_EmbedBatch_MarshalError(t *testing.T) {
+	// Save original function
+	original := jsonMarshalFunc
+	defer func() { jsonMarshalFunc = original }()
+
+	// Inject a failing marshal function
+	jsonMarshalFunc = func(v any) ([]byte, error) {
+		return nil, fmt.Errorf("simulated marshal error")
+	}
+
+	client := NewClient(Config{
+		APIKey:  "key",
+		BaseURL: "http://localhost",
+		Timeout: 5 * time.Second,
+	})
+
+	_, err := client.EmbedBatch(context.Background(), []string{"test"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to marshal request")
+	assert.Contains(t, err.Error(), "simulated marshal error")
+}
+
+func TestClient_Embed_ReturnError(t *testing.T) {
+	// Test that Embed properly propagates errors from EmbedBatch
+	client := NewClient(Config{
+		APIKey:  "key",
+		BaseURL: "http://invalid-host-that-does-not-exist.local:99999",
+		Timeout: 100 * time.Millisecond,
+	})
+
+	_, err := client.Embed(context.Background(), "test")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "request failed")
 }

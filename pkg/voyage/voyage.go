@@ -14,6 +14,9 @@ import (
 	"digital.vasic.embeddings/pkg/provider"
 )
 
+// jsonMarshalFunc is a function variable for JSON marshaling (for testing).
+var jsonMarshalFunc = json.Marshal
+
 // Default values for Voyage AI embedding configuration.
 const (
 	DefaultBaseURL = "https://api.voyageai.com/v1"
@@ -124,7 +127,7 @@ func (c *Client) EmbedBatch(ctx context.Context, texts []string) ([][]float32, e
 		Truncation: true,
 	}
 
-	body, err := json.Marshal(reqBody)
+	body, err := jsonMarshalFunc(reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("voyage: failed to marshal request: %w", err)
 	}

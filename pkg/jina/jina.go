@@ -38,11 +38,24 @@ type Config struct {
 	Timeout time.Duration `json:"timeout"`
 }
 
+// jsonMarshaler abstracts JSON marshaling for dependency injection in tests.
+type jsonMarshaler interface {
+	Marshal(v interface{}) ([]byte, error)
+}
+
+// defaultMarshaler is the production JSON marshaler.
+type defaultMarshaler struct{}
+
+func (defaultMarshaler) Marshal(v interface{}) ([]byte, error) {
+	return json.Marshal(v)
+}
+
 // Client implements provider.EmbeddingProvider for Jina AI.
 type Client struct {
 	config     Config
 	httpClient *http.Client
 	dimension  int
+	marshaler  jsonMarshaler
 }
 
 // embedRequest represents a Jina embed API request.
@@ -91,6 +104,7 @@ func NewClient(config Config) *Client {
 		httpClient: &http.Client{
 			Timeout: config.Timeout,
 		},
+		marshaler: defaultMarshaler{},
 	}
 }
 
@@ -125,7 +139,7 @@ func (c *Client) EmbedBatch(ctx context.Context, texts []string) ([][]float32, e
 		Task:           c.config.Task,
 	}
 
-	body, err := json.Marshal(reqBody)
+	body, err := c.marshaler.Marshal(reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("jina: failed to marshal request: %w", err)
 	}
