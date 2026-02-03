@@ -1,0 +1,75 @@
+graph TD
+    subgraph "digital.vasic.embeddings"
+        subgraph "pkg/provider"
+            EmbeddingProvider["EmbeddingProvider\n(interface)"]
+            Config["Config"]
+            Result["Result"]
+            TokenUsage["TokenUsage"]
+            DefaultConfig["DefaultConfig()"]
+        end
+
+        subgraph "pkg/openai"
+            OpenAIConfig["Config"]
+            OpenAIClient["Client"]
+            OpenAINewClient["NewClient()"]
+        end
+
+        subgraph "pkg/cohere"
+            CohereConfig["Config"]
+            CohereClient["Client"]
+            CohereNewClient["NewClient()"]
+        end
+
+        subgraph "pkg/voyage"
+            VoyageConfig["Config"]
+            VoyageClient["Client"]
+            VoyageNewClient["NewClient()"]
+        end
+
+        subgraph "pkg/jina"
+            JinaConfig["Config"]
+            JinaClient["Client"]
+            JinaNewClient["NewClient()"]
+        end
+
+        subgraph "pkg/google"
+            GoogleConfig["Config"]
+            GoogleClient["Client"]
+            GoogleNewClient["NewClient()"]
+        end
+
+        subgraph "pkg/bedrock"
+            BedrockConfig["Config"]
+            BedrockClient["Client"]
+            BedrockNewClient["NewClient()"]
+        end
+    end
+
+    OpenAIClient -->|implements| EmbeddingProvider
+    CohereClient -->|implements| EmbeddingProvider
+    VoyageClient -->|implements| EmbeddingProvider
+    JinaClient -->|implements| EmbeddingProvider
+    GoogleClient -->|implements| EmbeddingProvider
+    BedrockClient -->|implements| EmbeddingProvider
+
+    OpenAINewClient -->|creates| OpenAIClient
+    CohereNewClient -->|creates| CohereClient
+    VoyageNewClient -->|creates| VoyageClient
+    JinaNewClient -->|creates| JinaClient
+    GoogleNewClient -->|creates| GoogleClient
+    BedrockNewClient -->|creates| BedrockClient
+
+    OpenAIClient -->|"POST /v1/embeddings"| OpenAIAPI["OpenAI API"]
+    CohereClient -->|"POST /v2/embed"| CohereAPI["Cohere API"]
+    VoyageClient -->|"POST /v1/embeddings"| VoyageAPI["Voyage AI API"]
+    JinaClient -->|"POST /v1/embeddings"| JinaAPI["Jina AI API"]
+    GoogleClient -->|"POST .../models/:predict"| GoogleAPI["Vertex AI API"]
+    BedrockClient -->|"POST /model/.../invoke"| BedrockAPI["AWS Bedrock API"]
+
+    style EmbeddingProvider fill:#4a9eff,color:#fff
+    style OpenAIClient fill:#74aa9c,color:#fff
+    style CohereClient fill:#d18ee2,color:#fff
+    style VoyageClient fill:#ff8c42,color:#fff
+    style JinaClient fill:#009688,color:#fff
+    style GoogleClient fill:#4285f4,color:#fff
+    style BedrockClient fill:#ff9900,color:#fff

@@ -1,0 +1,68 @@
+sequenceDiagram
+    participant App as Application
+    participant Provider as EmbeddingProvider
+    participant Client as Client (e.g., openai.Client)
+    participant HTTP as http.Client
+    participant API as Provider API
+
+    Note over App,API: Single Embedding Flow
+
+    App->>Provider: Embed(ctx, "text")
+    Provider->>Client: Embed(ctx, "text")
+    Client->>Client: EmbedBatch(ctx, ["text"])
+    Client->>Client: Marshal embedRequest to JSON
+    Client->>HTTP: NewRequestWithContext(POST, url, body)
+    Client->>HTTP: Set Authorization header
+    HTTP->>API: POST /embeddings
+    API-->>HTTP: 200 OK + embedResponse JSON
+    HTTP-->>Client: *http.Response
+    Client->>Client: Decode JSON response
+    Client->>Client: Extract embedding by index
+    Client-->>Provider: ([]float32, nil)
+    Provider-->>App: ([]float32, nil)
+
+    Note over App,API: Batch Embedding Flow
+
+    App->>Provider: EmbedBatch(ctx, ["text1", "text2", "text3"])
+    Provider->>Client: EmbedBatch(ctx, ["text1", "text2", "text3"])
+    Client->>Client: Marshal embedRequest to JSON
+    Client->>HTTP: NewRequestWithContext(POST, url, body)
+    Client->>HTTP: Set Authorization header
+    HTTP->>API: POST /embeddings
+    API-->>HTTP: 200 OK + embedResponse JSON
+    HTTP-->>Client: *http.Response
+    Client->>Client: Decode JSON response
+    Client->>Client: Reorder embeddings by index
+    Client-->>Provider: ([][]float32, nil)
+    Provider-->>App: ([][]float32, nil)
+
+    Note over App,API: Error Flow
+
+    App->>Provider: Embed(ctx, "text")
+    Provider->>Client: Embed(ctx, "text")
+    Client->>Client: EmbedBatch(ctx, ["text"])
+    Client->>HTTP: POST request
+    HTTP->>API: POST /embeddings
+    API-->>HTTP: 429 Too Many Requests
+    HTTP-->>Client: *http.Response (status 429)
+    Client->>Client: Read error body
+    Client-->>Provider: (nil, "provider: API error 429 - ...")
+    Provider-->>App: (nil, error)
+
+    Note over App,API: Bedrock Titan Batch Flow (Sequential)
+
+    App->>Provider: EmbedBatch(ctx, ["text1", "text2"])
+    Provider->>Client: EmbedBatch(ctx, ["text1", "text2"])
+    Client->>Client: Detect amazon.titan prefix
+    loop For each text
+        Client->>Client: embedTitan(ctx, text)
+        Client->>Client: Marshal titanRequest
+        Client->>Client: signRequest (AWS SigV4)
+        Client->>HTTP: POST /model/{model}/invoke
+        HTTP->>API: Signed request
+        API-->>HTTP: 200 OK + titanResponse
+        HTTP-->>Client: titanResponse
+        Client->>Client: Extract embedding
+    end
+    Client-->>Provider: ([][]float32, nil)
+    Provider-->>App: ([][]float32, nil)

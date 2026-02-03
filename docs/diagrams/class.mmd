@@ -1,0 +1,154 @@
+classDiagram
+    class EmbeddingProvider {
+        <<interface>>
+        +Embed(ctx Context, text string) ([]float32, error)
+        +EmbedBatch(ctx Context, texts []string) ([][]float32, error)
+        +Dimensions() int
+        +Name() string
+    }
+
+    class Config {
+        +Model string
+        +BatchSize int
+        +MaxRetries int
+        +Timeout Duration
+    }
+
+    class Result {
+        +Embeddings [][]float32
+        +Model string
+        +Usage TokenUsage
+    }
+
+    class TokenUsage {
+        +PromptTokens int
+        +TotalTokens int
+    }
+
+    class OpenAIConfig {
+        +APIKey string
+        +Model string
+        +BaseURL string
+        +Timeout Duration
+    }
+
+    class OpenAIClient {
+        -config OpenAIConfig
+        -httpClient *http.Client
+        -dimension int
+        +Embed(ctx Context, text string) ([]float32, error)
+        +EmbedBatch(ctx Context, texts []string) ([][]float32, error)
+        +Dimensions() int
+        +Name() string
+    }
+
+    class CohereConfig {
+        +APIKey string
+        +Model string
+        +BaseURL string
+        +InputType string
+        +Timeout Duration
+    }
+
+    class CohereClient {
+        -config CohereConfig
+        -httpClient *http.Client
+        -dimension int
+        +Embed(ctx Context, text string) ([]float32, error)
+        +EmbedBatch(ctx Context, texts []string) ([][]float32, error)
+        +Dimensions() int
+        +Name() string
+    }
+
+    class VoyageConfig {
+        +APIKey string
+        +Model string
+        +BaseURL string
+        +InputType string
+        +Timeout Duration
+    }
+
+    class VoyageClient {
+        -config VoyageConfig
+        -httpClient *http.Client
+        -dimension int
+        +Embed(ctx Context, text string) ([]float32, error)
+        +EmbedBatch(ctx Context, texts []string) ([][]float32, error)
+        +Dimensions() int
+        +Name() string
+    }
+
+    class JinaConfig {
+        +APIKey string
+        +Model string
+        +BaseURL string
+        +Task string
+        +Timeout Duration
+    }
+
+    class JinaClient {
+        -config JinaConfig
+        -httpClient *http.Client
+        -dimension int
+        +Embed(ctx Context, text string) ([]float32, error)
+        +EmbedBatch(ctx Context, texts []string) ([][]float32, error)
+        +Dimensions() int
+        +Name() string
+    }
+
+    class GoogleConfig {
+        +ProjectID string
+        +Location string
+        +Model string
+        +APIKey string
+        +BaseURL string
+        +Timeout Duration
+    }
+
+    class GoogleClient {
+        -config GoogleConfig
+        -httpClient *http.Client
+        -dimension int
+        +Embed(ctx Context, text string) ([]float32, error)
+        +EmbedBatch(ctx Context, texts []string) ([][]float32, error)
+        +Dimensions() int
+        +Name() string
+    }
+
+    class BedrockConfig {
+        +Region string
+        +AccessKey string
+        +SecretKey string
+        +Model string
+        +BaseURL string
+        +Timeout Duration
+    }
+
+    class BedrockClient {
+        -config BedrockConfig
+        -httpClient *http.Client
+        -dimension int
+        +Embed(ctx Context, text string) ([]float32, error)
+        +EmbedBatch(ctx Context, texts []string) ([][]float32, error)
+        +Dimensions() int
+        +Name() string
+        -embedTitan(ctx Context, text string) ([]float32, error)
+        -embedCohere(ctx Context, texts []string) ([][]float32, error)
+        -signRequest(req *http.Request, body []byte)
+    }
+
+    Result --> TokenUsage
+
+    EmbeddingProvider <|.. OpenAIClient : implements
+    EmbeddingProvider <|.. CohereClient : implements
+    EmbeddingProvider <|.. VoyageClient : implements
+    EmbeddingProvider <|.. JinaClient : implements
+    EmbeddingProvider <|.. GoogleClient : implements
+    EmbeddingProvider <|.. BedrockClient : implements
+
+    OpenAIClient --> OpenAIConfig : uses
+    CohereClient --> CohereConfig : uses
+    VoyageClient --> VoyageConfig : uses
+    JinaClient --> JinaConfig : uses
+    GoogleClient --> GoogleConfig : uses
+    BedrockClient --> BedrockConfig : uses
