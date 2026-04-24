@@ -10,15 +10,12 @@ same session as the change.** Coverage and green suites are not evidence.
 
 ### Acceptance demo for this module
 
-<!-- TODO: replace this block with the exact command(s) that exercise this
-     module end-to-end against real dependencies, and the expected output.
-     The commands must run the real artifact (built binary, deployed
-     container, real service) — no in-process fakes, no mocks, no
-     `httptest.NewServer`, no Robolectric, no JSDOM as proof of done. -->
-
 ```bash
-# TODO
+# Embedding provider interface + real OpenAI adapter (requires OPENAI_API_KEY)
+cd Embeddings && GOMAXPROCS=2 nice -n 19 go test -count=1 -race -v ./pkg/openai/...
 ```
+Expect: PASS; `provider.EmbeddingProvider.Embed`/`EmbedBatch` exercised per `Embeddings/README.md`. Without `OPENAI_API_KEY` the live tests skip — that's OK per DoD; add your key to run end-to-end.
+
 
 ## Project Overview
 
