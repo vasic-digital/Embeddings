@@ -14,7 +14,7 @@ import (
 
 func TestOpenAIClient_InterfaceCompliance_Integration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Verify that OpenAI Client implements EmbeddingProvider at compile time
@@ -31,7 +31,7 @@ func TestOpenAIClient_InterfaceCompliance_Integration(t *testing.T) {
 
 func TestOpenAIClient_ModelDimensions_Integration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	tests := []struct {
@@ -57,7 +57,7 @@ func TestOpenAIClient_ModelDimensions_Integration(t *testing.T) {
 
 func TestOpenAIClient_DefaultConfig_Integration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Empty model and base URL should use defaults
@@ -70,7 +70,7 @@ func TestOpenAIClient_DefaultConfig_Integration(t *testing.T) {
 
 func TestOpenAIClient_EmbedBatch_WithMockServer_Integration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Create a mock HTTP server that returns embedding responses
@@ -119,7 +119,7 @@ func TestOpenAIClient_EmbedBatch_WithMockServer_Integration(t *testing.T) {
 
 func TestOpenAIClient_Embed_WithMockServer_Integration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(
@@ -156,7 +156,7 @@ func TestOpenAIClient_Embed_WithMockServer_Integration(t *testing.T) {
 
 func TestProviderConfig_Defaults_Integration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	cfg := provider.DefaultConfig()
@@ -167,7 +167,7 @@ func TestProviderConfig_Defaults_Integration(t *testing.T) {
 
 func TestProviderResult_Structure_Integration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")
+		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	result := provider.Result{

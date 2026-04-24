@@ -15,7 +15,7 @@ import (
 
 func TestOpenAIClient_AuthorizationHeader_Security(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	var capturedAuth string
@@ -52,7 +52,7 @@ func TestOpenAIClient_AuthorizationHeader_Security(t *testing.T) {
 
 func TestOpenAIClient_LargeInput_Security(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(
@@ -86,7 +86,7 @@ func TestOpenAIClient_LargeInput_Security(t *testing.T) {
 
 func TestOpenAIClient_EmptyAPIKey_Security(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Creating a client with empty API key should still work
@@ -100,7 +100,7 @@ func TestOpenAIClient_EmptyAPIKey_Security(t *testing.T) {
 
 func TestOpenAIClient_MalformedJSON_Security(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(
@@ -123,7 +123,7 @@ func TestOpenAIClient_MalformedJSON_Security(t *testing.T) {
 
 func TestOpenAIClient_HTMLResponseBody_Security(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(
@@ -147,7 +147,7 @@ func TestOpenAIClient_HTMLResponseBody_Security(t *testing.T) {
 
 func TestProviderConfig_NegativeValues_Security(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Negative batch size and retries should not cause issues
@@ -170,7 +170,7 @@ func TestProviderConfig_NegativeValues_Security(t *testing.T) {
 
 func TestOpenAIClient_NilContext_Security(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping security test in short mode")
+		t.Skip("skipping security test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	// Empty batch should not panic

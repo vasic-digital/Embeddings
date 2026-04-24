@@ -16,7 +16,7 @@ import (
 
 func TestOpenAIClient_ConcurrentEmbedRequests_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(
@@ -62,7 +62,7 @@ func TestOpenAIClient_ConcurrentEmbedRequests_Stress(t *testing.T) {
 
 func TestOpenAIClient_ConcurrentBatchEmbedRequests_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(
@@ -123,7 +123,7 @@ func TestOpenAIClient_ConcurrentBatchEmbedRequests_Stress(t *testing.T) {
 
 func TestOpenAIClient_ConcurrentCreation_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	const goroutines = 100
@@ -150,7 +150,7 @@ func TestOpenAIClient_ConcurrentCreation_Stress(t *testing.T) {
 
 func TestProviderConfig_ConcurrentSerialization_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	cfg := provider.DefaultConfig()
@@ -177,7 +177,7 @@ func TestProviderConfig_ConcurrentSerialization_Stress(t *testing.T) {
 
 func TestProviderResult_ConcurrentAccess_Stress(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping stress test in short mode")
+		t.Skip("skipping stress test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	const goroutines = 100
