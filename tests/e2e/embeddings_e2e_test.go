@@ -15,7 +15,7 @@ import (
 
 func TestOpenAIClient_FullEmbeddingLifecycle_E2E(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping e2e test in short mode")
+		t.Skip("skipping e2e test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	mockEmbeddings := map[string][]float32{
@@ -84,7 +84,7 @@ func TestOpenAIClient_FullEmbeddingLifecycle_E2E(t *testing.T) {
 
 func TestOpenAIClient_APIErrorHandling_E2E(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping e2e test in short mode")
+		t.Skip("skipping e2e test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(
@@ -108,7 +108,7 @@ func TestOpenAIClient_APIErrorHandling_E2E(t *testing.T) {
 
 func TestOpenAIClient_EmptyResponse_E2E(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping e2e test in short mode")
+		t.Skip("skipping e2e test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(
@@ -139,7 +139,7 @@ func TestOpenAIClient_EmptyResponse_E2E(t *testing.T) {
 
 func TestProviderConfigSerialization_E2E(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping e2e test in short mode")
+		t.Skip("skipping e2e test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	cfg := provider.Config{
@@ -162,7 +162,7 @@ func TestProviderConfigSerialization_E2E(t *testing.T) {
 
 func TestOpenAIClient_ServerError_E2E(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping e2e test in short mode")
+		t.Skip("skipping e2e test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(
@@ -185,7 +185,7 @@ func TestOpenAIClient_ServerError_E2E(t *testing.T) {
 
 func TestTokenUsage_Structure_E2E(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping e2e test in short mode")
+		t.Skip("skipping e2e test in short mode")  // SKIP-OK: #short-mode
 	}
 
 	usage := provider.TokenUsage{
