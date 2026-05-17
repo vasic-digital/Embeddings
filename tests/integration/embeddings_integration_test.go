@@ -2,8 +2,7 @@ package integration
 
 import (
 	"encoding/json"
-	"net/http"
-	"net/http/httptest"
+	"os"
 	"testing"
 
 	"digital.vasic.embeddings/pkg/openai"
@@ -68,90 +67,62 @@ func TestOpenAIClient_DefaultConfig_Integration(t *testing.T) {
 	assert.Equal(t, 1536, client.Dimensions())
 }
 
-func TestOpenAIClient_EmbedBatch_WithMockServer_Integration(t *testing.T) {
+// TestOpenAIClient_EmbedBatch_LiveAPI_Integration: per CONST-050(A),
+// integration tests MUST exercise the real backing service.
+// Previously this test stood up a `httptest.NewServer` with
+// hardcoded float-vector responses — CONST-050(A) violation
+// (mock servers in integration tests certify the JSON serialisation
+// path but cannot detect wrong endpoint, auth-header format,
+// model-name mismatches, token-counting errors, batch-size limits —
+// all of which would appear to end users as broken features).
+//
+// Fix per CLAUDE.md "Acceptance demo" guidance ("Without
+// OPENAI_API_KEY the live tests skip — that's OK per DoD"):
+// SKIP-OK when no real API key set; live HTTP POST to OpenAI when
+// OPENAI_API_KEY is provided. Unit-level JSON-serialisation
+// coverage stays in pkg/openai/openai_test.go where mock servers
+// are CONST-050(A)-permitted.
+func TestOpenAIClient_EmbedBatch_LiveAPI_Integration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
-
-	// Create a mock HTTP server that returns embedding responses
-	server := httptest.NewServer(http.HandlerFunc(
-		func(w http.ResponseWriter, r *http.Request) {
-			assert.Equal(t, http.MethodPost, r.Method)
-			assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
-			assert.Contains(t, r.Header.Get("Authorization"), "Bearer ")
-
-			response := map[string]interface{}{
-				"data": []map[string]interface{}{
-					{
-						"embedding": []float32{0.1, 0.2, 0.3},
-						"index":     0,
-					},
-					{
-						"embedding": []float32{0.4, 0.5, 0.6},
-						"index":     1,
-					},
-				},
-				"model": "text-embedding-3-small",
-				"usage": map[string]int{
-					"prompt_tokens": 10,
-					"total_tokens":  10,
-				},
-			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(response)
-		},
-	))
-	defer server.Close()
-
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		t.Skip("SKIP-OK: #embeddings-live-key-required — OPENAI_API_KEY env var not set; integration tests MUST hit the real provider per CONST-050(A), and mock-server fakes are restricted to unit tests (see pkg/openai/openai_test.go)")
+	}
 	client := openai.NewClient(openai.Config{
-		APIKey:  "test-key",
-		Model:   "text-embedding-3-small",
-		BaseURL: server.URL,
+		APIKey: apiKey,
+		Model:  "text-embedding-3-small",
 	})
 
 	ctx := t.Context()
 	embeddings, err := client.EmbedBatch(ctx, []string{"hello", "world"})
 	require.NoError(t, err)
-	assert.Equal(t, 2, len(embeddings))
-	assert.Equal(t, []float32{0.1, 0.2, 0.3}, embeddings[0])
-	assert.Equal(t, []float32{0.4, 0.5, 0.6}, embeddings[1])
+	require.Equal(t, 2, len(embeddings))
+	// Real embeddings have client.Dimensions() (1536 for
+	// text-embedding-3-small) float32 values per item.
+	assert.Equal(t, client.Dimensions(), len(embeddings[0]))
+	assert.Equal(t, client.Dimensions(), len(embeddings[1]))
 }
 
-func TestOpenAIClient_Embed_WithMockServer_Integration(t *testing.T) {
+// TestOpenAIClient_Embed_LiveAPI_Integration: SKIP-OK pattern per
+// CONST-050(A); see above.
+func TestOpenAIClient_Embed_LiveAPI_Integration(t *testing.T) {
 	if testing.Short() {
-		t.Skip("skipping integration test in short mode")  // SKIP-OK: #short-mode
+		t.Skip("skipping integration test in short mode") // SKIP-OK: #short-mode
 	}
-
-	server := httptest.NewServer(http.HandlerFunc(
-		func(w http.ResponseWriter, _ *http.Request) {
-			response := map[string]interface{}{
-				"data": []map[string]interface{}{
-					{
-						"embedding": []float32{0.7, 0.8, 0.9},
-						"index":     0,
-					},
-				},
-				"model": "text-embedding-3-small",
-				"usage": map[string]int{
-					"prompt_tokens": 5,
-					"total_tokens":  5,
-				},
-			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(response)
-		},
-	))
-	defer server.Close()
-
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		t.Skip("SKIP-OK: #embeddings-live-key-required — OPENAI_API_KEY env var not set; integration tests MUST hit the real provider per CONST-050(A)")
+	}
 	client := openai.NewClient(openai.Config{
-		APIKey:  "test-key",
-		BaseURL: server.URL,
+		APIKey: apiKey,
 	})
 
 	ctx := t.Context()
 	embedding, err := client.Embed(ctx, "test input")
 	require.NoError(t, err)
-	assert.Equal(t, []float32{0.7, 0.8, 0.9}, embedding)
+	assert.Equal(t, client.Dimensions(), len(embedding))
 }
 
 func TestProviderConfig_Defaults_Integration(t *testing.T) {
