@@ -1,0 +1,36 @@
+{
+  "_comment": "Round-249 bilingual fixtures for Embeddings. Used by embeddings_describe_challenge.sh + challenges/runner/main.go to verify UTF-8 / non-ASCII text round-trips losslessly through every provider's EmbedBatch path. CONST-046 alignment (no hardcoded English-only assumption).",
+  "inputs": [
+    {
+      "locale": "en",
+      "text": "Hello, world! Embeddings turn text into vectors.",
+      "expected_min_dim": 8
+    },
+    {
+      "locale": "sr",
+      "text": "Здраво, свете! Уграђивања претварају текст у векторе.",
+      "expected_min_dim": 8
+    },
+    {
+      "locale": "ja",
+      "text": "こんにちは、世界！埋め込みはテキストをベクトルに変換します。",
+      "expected_min_dim": 8
+    },
+    {
+      "locale": "ar",
+      "text": "مرحبا بالعالم! التضمينات تحول النص إلى متجهات.",
+      "expected_min_dim": 8
+    },
+    {
+      "locale": "zh-CN",
+      "text": "你好，世界！嵌入将文本转换为向量。",
+      "expected_min_dim": 8
+    }
+  ],
+  "expected_invariants": {
+    "byte_preservation": "Input text bytes MUST reach the provider HTTP request body unchanged (UTF-8 preserved through json.Marshal).",
+    "dim_consistency": "Every embedding returned by a provider client MUST have exactly Client.Dimensions() float32 values.",
+    "index_ordering": "EmbedBatch MUST place the embedding for inputs[i] at outputs[i] regardless of server-side ordering.",
+    "interface_contract": "Every Client MUST implement provider.EmbeddingProvider — verified by compile-time blank assignment."
+  }
+}
